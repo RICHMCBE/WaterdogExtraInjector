@@ -4,139 +4,150 @@ declare(strict_types=1);
 
 namespace alvin0319\WaterdogExtraInjector\network\handler;
 
+
 final class WDPEClientData{
-	/**
-	 * @var \pocketmine\network\mcpe\protocol\types\login\ClientDataAnimationFrame[]
-	 * @required
-	 */
-	public array $AnimatedImageData;
 
-	/** @required */
-	public string $ArmSize;
+    /**
+     * @var \pocketmine\network\mcpe\protocol\types\login\ClientDataAnimationFrame[]
+     * @required
+     */
+    public array $AnimatedImageData;
 
-	/** @required */
-	public string $CapeData;
+    /** @required */
+    public string $ArmSize;
 
-	/** @required */
-	public string $CapeId;
+    /** @required */
+    public string $CapeData;
 
-	/** @required */
-	public int $CapeImageHeight;
+    /** @required */
+    public string $CapeId;
 
-	/** @required */
-	public int $CapeImageWidth;
+    /** @required */
+    public int $CapeImageHeight;
 
-	/** @required */
-	public bool $CapeOnClassicSkin;
+    /** @required */
+    public int $CapeImageWidth;
 
-	/** @required */
-	public int $ClientRandomId;
+    /** @required */
+    public bool $CapeOnClassicSkin;
 
-	/** @required */
-    	public bool $CompatibleWithClientSideChunkGen;
+    /** @required */
+    public int $ClientRandomId;
 
-	/** @required */
-	public int $CurrentInputMode;
+    /** @required */
+    public bool $CompatibleWithClientSideChunkGen;
 
-	/** @required */
-	public int $DefaultInputMode;
+    /** @required */
+    public int $CurrentInputMode;
 
-	/** @required */
-	public string $DeviceId;
+    /** @required */
+    public int $DefaultInputMode;
 
-	/** @required */
-	public string $DeviceModel;
+    /** @required */
+    public string $DeviceId;
 
-	/** @required */
-	public int $DeviceOS;
+    /** @required */
+    public string $DeviceModel;
 
-	/** @required */
-	public string $GameVersion;
+    /** @required */
+    public int $DeviceOS;
 
-	/** @required */
-	public int $GuiScale;
+    /** @required */
+    public string $GameVersion;
 
-	/** @required */
-    	public bool $IsEditorMode = false;
+    /** @required */
+    public int $GuiScale;
 
-	/** @required */
-	public string $LanguageCode;
+    /** @required */
+    public bool $IsEditorMode;
 
-	public bool $OverrideSkin;
+    /** @required */
+    public string $LanguageCode;
 
-	/**
-	 * @var \pocketmine\network\mcpe\protocol\types\login\ClientDataPersonaSkinPiece[]
-	 * @required
-	 */
-	public array $PersonaPieces;
+    /** @required */
+    public int $MaxViewDistance;
 
-	/** @required */
-	public bool $PersonaSkin;
+    /** @required */
+    public int $MemoryTier;
 
-	/**
-	 * @var \pocketmine\network\mcpe\protocol\types\login\ClientDataPersonaPieceTintColor[]
-	 * @required
-	 */
-	public array $PieceTintColors;
+    public bool $OverrideSkin;
 
-	/** @required */
-	public string $PlatformOfflineId;
+    /**
+     * @var \pocketmine\network\mcpe\protocol\types\login\ClientDataPersonaSkinPiece[]
+     * @required
+     */
+    public array $PersonaPieces;
 
-	/** @required */
-	public string $PlatformOnlineId;
+    /** @required */
+    public bool $PersonaSkin;
 
-	public string $PlatformUserId = ""; //xbox-only, apparently
+    /**
+     * @var \pocketmine\network\mcpe\protocol\types\login\ClientDataPersonaPieceTintColor[]
+     * @required
+     */
+    public array $PieceTintColors;
 
-	/** @required */
-	public string $PlayFabId;
+    /** @required */
+    public string $PlatformOfflineId;
 
-	/** @required */
-	public bool $PremiumSkin = false;
+    /** @required */
+    public string $PlatformOnlineId;
 
-	/** @required */
-	public string $SelfSignedId;
+    /** @required */
+    public int $PlatformType;
 
-	/** @required */
-	public string $ServerAddress;
+    public string $PlatformUserId = ""; //xbox-only, apparently
 
-	/** @required */
-	public string $SkinAnimationData;
+    /** @required */
+    public string $PlayFabId;
 
-	/** @required */
-	public string $SkinColor;
+    /** @required */
+    public bool $PremiumSkin = false;
 
-	/** @required */
-	public string $SkinData;
+    /** @required */
+    public string $SelfSignedId;
 
-	/** @required */
-	public string $SkinGeometryData;
+    /** @required */
+    public string $ServerAddress;
 
-	/** @required */
-	public string $SkinGeometryDataEngineVersion;
+    /** @required */
+    public string $SkinAnimationData;
 
-	/** @required */
-	public string $SkinId;
+    /** @required */
+    public string $SkinColor;
 
-	/** @required */
-	public int $SkinImageHeight;
+    /** @required */
+    public string $SkinData;
 
-	/** @required */
-	public int $SkinImageWidth;
+    /** @required */
+    public string $SkinGeometryData;
 
-	/** @required */
-	public string $SkinResourcePatch;
+    /** @required */
+    public string $SkinGeometryDataEngineVersion;
 
-	/** @required */
-	public string $ThirdPartyName;
+    /** @required */
+    public string $SkinId;
 
-	/** @required */
-	public bool $ThirdPartyNameOnly;
+    /** @required */
+    public int $SkinImageHeight;
 
-	/** @required */
-	public bool $TrustedSkin;
+    /** @required */
+    public int $SkinImageWidth;
 
-	/** @required */
-	public int $UIProfile;
+    /** @required */
+    public string $SkinResourcePatch;
+
+    /** @required */
+    public string $ThirdPartyName;
+
+    /** @required */
+    public bool $ThirdPartyNameOnly;
+
+    /** @required */
+    public bool $TrustedSkin;
+
+    /** @required */
+    public int $UIProfile;
 
 	/** @required */
 	public string $Waterdog_XUID;
