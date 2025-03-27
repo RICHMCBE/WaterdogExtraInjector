@@ -154,4 +154,6 @@ final class WDPEClientData{
 
 	/** @required */
 	public string $Waterdog_IP;
+
+    public static $GraphicsMode;
 }
