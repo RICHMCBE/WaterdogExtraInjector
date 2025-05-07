@@ -156,4 +156,6 @@ final class WDPEClientData{
 	public string $Waterdog_IP;
 
     public static $GraphicsMode;
+
+    public static $Waterdog_Auth;
 }
