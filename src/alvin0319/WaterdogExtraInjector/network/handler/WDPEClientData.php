@@ -52,6 +52,12 @@ final class WDPEClientData{
     /** @required */
     public int $DeviceOS;
 
+    /** @var bool */
+    public $ThirdPartyNameOnly;
+
+    /** @var string */
+    public $EditorWorldType;
+
     /** @required */
     public string $GameVersion;
 
@@ -139,9 +145,6 @@ final class WDPEClientData{
 
     /** @required */
     public string $ThirdPartyName;
-
-    /** @required */
-    public bool $ThirdPartyNameOnly;
 
     /** @required */
     public bool $TrustedSkin;

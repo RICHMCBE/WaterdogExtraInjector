@@ -6,25 +6,15 @@ namespace alvin0319\WaterdogExtraInjector\network\handler;
 
 use Closure;
 use InvalidArgumentException;
-use JsonMapper;
-use JsonMapper_Exception;
 use pocketmine\entity\InvalidSkinException;
 use pocketmine\event\player\PlayerPreLoginEvent;
 use pocketmine\lang\KnownTranslationFactory;
-use pocketmine\lang\KnownTranslationKeys;
-use pocketmine\network\mcpe\auth\ProcessLoginTask;
 use pocketmine\network\mcpe\convert\TypeConverter;
 use pocketmine\network\mcpe\handler\PacketHandler;
 use pocketmine\network\mcpe\JwtException;
 use pocketmine\network\mcpe\JwtUtils;
 use pocketmine\network\mcpe\NetworkSession;
 use pocketmine\network\mcpe\protocol\LoginPacket;
-use pocketmine\network\mcpe\protocol\PlayStatusPacket;
-use pocketmine\network\mcpe\protocol\ProtocolInfo;
-use pocketmine\network\mcpe\protocol\types\login\AuthenticationData;
-use pocketmine\network\mcpe\protocol\types\login\ClientDataPersonaPieceTintColor;
-use pocketmine\network\mcpe\protocol\types\login\ClientDataPersonaSkinPiece;
-use pocketmine\network\mcpe\protocol\types\login\JwtChain;
 use pocketmine\network\mcpe\protocol\types\skin\PersonaPieceTintColor;
 use pocketmine\network\mcpe\protocol\types\skin\PersonaSkinPiece;
 use pocketmine\network\mcpe\protocol\types\skin\SkinAnimation;
@@ -39,13 +29,12 @@ use Ramsey\Uuid\Uuid;
 use function array_map;
 use function base64_decode;
 use function is_array;
+use function json_decode;
+use function property_exists;
 
 final class WDPELoginPacketHandler extends PacketHandler{
 
-
-	/** @var Server */
 	private Server $server;
-	/** @var NetworkSession */
 	private NetworkSession $session;
 	/**
 	 * @var Closure
@@ -70,18 +59,34 @@ final class WDPELoginPacketHandler extends PacketHandler{
 	}
 
 	public function handleLogin(LoginPacket $packet) : bool{
-		$extraData = $this->fetchAuthData($packet->chainDataJwt);
+		// API 5에서는 chainDataJwt 또는 authInfoJson 사용
+		$chainData = null;
+		if(property_exists($packet, 'chainDataJwt') && isset($packet->chainDataJwt)){
+			// 새로운 API 5 방식
+			$chainData = $packet->chainDataJwt->chain ?? null;
+		}elseif(property_exists($packet, 'authInfoJson') && isset($packet->authInfoJson)){
+			// 이전 방식
+			$chainData = $this->parseChainDataFromJson($packet->authInfoJson);
+		}else{
+			$this->server->getLogger()->warning("[WDPE Debug] No chain data property found in LoginPacket");
+		}
 
-		if(!Player::isValidUserName($extraData->displayName)){
+		if($chainData === null){
+			throw new PacketHandlingException("Failed to extract chain data from LoginPacket");
+		}
+
+        $extraData = $this->fetchAuthData($chainData);
+
+		$displayName = $extraData->displayName ?? $extraData->name ?? null;
+		
+		if($displayName === null || !Player::isValidUserName($displayName)){
 			$this->session->disconnectWithError(KnownTranslationFactory::disconnectionScreen_invalidName());
-
 			return true;
 		}
 
 		$clientData = $this->parseWDPEClientData($packet->clientDataJwt);
 
 		(function() use ($clientData) : void{
-			/** @noisnpectoin PhpUndefinedFieldInspection */
 			$this->ip = $clientData->Waterdog_IP;
 		})->call($this->session);
 
@@ -90,18 +95,19 @@ final class WDPELoginPacketHandler extends PacketHandler{
 		}catch(InvalidArgumentException|InvalidSkinException $e){
 			$this->session->getLogger()->debug("Invalid skin: " . $e->getMessage());
 			$this->session->disconnectWithError(KnownTranslationFactory::disconnectionScreen_invalidSkin());
-
 			return true;
 		}
 
-		if(!Uuid::isValid($extraData->identity)){
+		$identityUuid = $extraData->identity ?? $extraData->UUID ?? $extraData->uuid ?? null;
+		
+		if($identityUuid === null || !Uuid::isValid($identityUuid)){
 			throw new PacketHandlingException("Invalid login UUID");
 		}
-		$uuid = Uuid::fromString($extraData->identity);
+		$uuid = Uuid::fromString($identityUuid);
 		if($clientData->Waterdog_XUID !== ""){
 			$playerInfo = new XboxLivePlayerInfo(
 				$clientData->Waterdog_XUID,
-				$extraData->displayName,
+				$displayName,
 				$uuid,
 				$skin,
 				$clientData->LanguageCode,
@@ -109,7 +115,7 @@ final class WDPELoginPacketHandler extends PacketHandler{
 			);
 		}else{
 			$playerInfo = new PlayerInfo(
-				$extraData->displayName,
+				$displayName,
 				$uuid,
 				$skin,
 				$clientData->LanguageCode,
@@ -157,19 +163,56 @@ final class WDPELoginPacketHandler extends PacketHandler{
 			return true;
 		}
 
-		$this->processLogin($packet, $ev->isAuthRequired());
+		$this->processLogin($packet, $ev->isAuthRequired(), $chainData);
 
 		return true;
 	}
 
 	/**
 	 * @throws PacketHandlingException
+	 * @return string[]
 	 */
-	protected function fetchAuthData(JwtChain $chain) : AuthenticationData{
-		/** @var AuthenticationData|null $extraData */
+	private function parseChainDataFromJson(string $authInfoJson): array {
+		try {
+			$authInfo = json_decode($authInfoJson, true);
+			if (!is_array($authInfo)) {
+				throw new PacketHandlingException("Invalid auth info JSON");
+			}
+
+			$chainArray = null;
+
+			// Certificate 내부의 chain 확인
+			if (isset($authInfo['Certificate'])) {
+				$certificate = json_decode($authInfo['Certificate'], true);
+				if (is_array($certificate)) {
+					if (isset($certificate['chain']) && is_array($certificate['chain'])) {
+						$chainArray = $certificate['chain'];
+					}
+				}
+			}
+
+			// 직접 chain 확인 (fallback)
+			if ($chainArray === null && isset($authInfo['chain']) && is_array($authInfo['chain'])) {
+				$chainArray = $authInfo['chain'];
+			}
+
+			if ($chainArray === null) {
+				throw new PacketHandlingException("No chain data found in auth info");
+			}
+
+			return $chainArray;
+
+		} catch (\JsonException $e) {
+			throw PacketHandlingException::wrap($e);
+		}
+	}
+
+	/**
+	 * @throws PacketHandlingException
+	 */
+	protected function fetchAuthData(array $chain) : object{
 		$extraData = null;
-		foreach($chain->chain as $k => $jwt){
-			//validate every chain element
+		foreach($chain as $k => $jwt){
 			try{
 				[, $claims,] = JwtUtils::parse($jwt);
 			}catch(JwtException $e){
@@ -183,16 +226,8 @@ final class WDPELoginPacketHandler extends PacketHandler{
 				if(!is_array($claims["extraData"])){
 					throw new PacketHandlingException("'extraData' key should be an array");
 				}
-				$mapper = new JsonMapper;
-				$mapper->bEnforceMapType = false; //TODO: we don't really need this as an array, but right now we don't have enough models
-				$mapper->bExceptionOnMissingData = true;
-				$mapper->bExceptionOnUndefinedProperty = true;
-				try{
-					/** @var AuthenticationData $extraData */
-					$extraData = $mapper->map($claims["extraData"], new AuthenticationData);
-				}catch(JsonMapper_Exception $e){
-					throw PacketHandlingException::wrap($e);
-				}
+				
+				$extraData = (object) $claims["extraData"];
 			}
 		}
 		if($extraData === null){
@@ -211,31 +246,45 @@ final class WDPELoginPacketHandler extends PacketHandler{
 			throw PacketHandlingException::wrap($e);
 		}
 
-		$mapper = new JsonMapper;
-		$mapper->bEnforceMapType = false; //TODO: we don't really need this as an array, but right now we don't have enough models
-		$mapper->bExceptionOnMissingData = true;
-		$mapper->bExceptionOnUndefinedProperty = true;
-		try{
-			$clientData = $mapper->map($clientDataClaims, new WDPEClientData());
-		}catch(JsonMapper_Exception $e){
-			throw PacketHandlingException::wrap($e);
+		// WDPEClientData 객체 생성 및 속성 직접 할당
+		$clientData = new WDPEClientData();
+		$reflection = new \ReflectionClass($clientData);
+		foreach($clientDataClaims as $key => $value){
+			if($reflection->hasProperty($key)){
+				$property = $reflection->getProperty($key);
+				// static 속성은 건너뛰기
+				if(!$property->isStatic()){
+					$clientData->$key = $value;
+				}
+			}
 		}
+		
 		return $clientData;
 	}
 
 	/**
-	 * TODO: This is separated for the purposes of allowing plugins (like Specter) to hack it and bypass authentication.
-	 * In the future this won't be necessary.
-	 *
-	 * @throws InvalidArgumentException
+	 * @param string[] $chainData
 	 */
-	protected function processLogin(LoginPacket $packet, bool $authRequired) : void{
-		$this->server->getAsyncPool()->submitTask(new ProcessLoginTask($packet->chainDataJwt->chain, $packet->clientDataJwt, $authRequired, $this->authCallback));
-		$this->session->setHandler(null); //drop packets received during login verification
+	protected function processLogin(LoginPacket $packet, bool $authRequired, array $chainData) : void{
+		// WaterdogPE에서 이미 인증되었으므로 authenticated=true로 설정
+		// chain에서 identityPublicKey 추출
+		$clientPubKey = null;
+		try{
+			if(count($chainData) > 0){
+				// 마지막 chain에서 identityPublicKey 추출
+				$lastChain = end($chainData);
+				[, $claims,] = JwtUtils::parse($lastChain);
+				if(isset($claims["identityPublicKey"])){
+					$clientPubKey = $claims["identityPublicKey"];
+				}
+			}
+		}catch(\Exception $e){
+			$this->server->getLogger()->debug("Failed to extract client public key: " . $e->getMessage());
+		}
+		
+		($this->authCallback)(true, $authRequired, null, $clientPubKey);
 	}
-	/**
-	 * @throws InvalidArgumentException
-	 */
+
 	private static function safeB64Decode(string $base64, string $context) : string{
 		$result = base64_decode($base64, true);
 		if($result === false){
@@ -244,13 +293,14 @@ final class WDPELoginPacketHandler extends PacketHandler{
 		return $result;
 	}
 
-	/**
-	 * @throws InvalidArgumentException
-	 */
 	public static function fromClientData(WDPEClientData $clientData) : SkinData{
 		/** @var SkinAnimation[] $animations */
 		$animations = [];
 		foreach($clientData->AnimatedImageData as $k => $animation){
+			// 배열이면 객체로 변환
+			if(is_array($animation)){
+				$animation = (object) $animation;
+			}
 			$animations[] = new SkinAnimation(
 				new SkinImage(
 					$animation->ImageHeight,
@@ -262,6 +312,22 @@ final class WDPELoginPacketHandler extends PacketHandler{
 				$animation->AnimationExpression
 			);
 		}
+		
+		// PersonaPieces와 PieceTintColors도 배열이면 객체로 변환
+		$personaPieces = array_map(function($piece) : PersonaSkinPiece{
+			if(is_array($piece)){
+				$piece = (object) $piece;
+			}
+			return new PersonaSkinPiece($piece->PieceId, $piece->PieceType, $piece->PackId, $piece->IsDefault, $piece->ProductId);
+		}, $clientData->PersonaPieces);
+		
+		$pieceTintColors = array_map(function($tint) : PersonaPieceTintColor{
+			if(is_array($tint)){
+				$tint = (object) $tint;
+			}
+			return new PersonaPieceTintColor($tint->PieceType, $tint->Colors);
+		}, $clientData->PieceTintColors);
+		
 		return new SkinData(
 			$clientData->SkinId,
 			$clientData->PlayFabId,
@@ -270,23 +336,19 @@ final class WDPELoginPacketHandler extends PacketHandler{
 			$animations,
 			new SkinImage($clientData->CapeImageHeight, $clientData->CapeImageWidth, self::safeB64Decode($clientData->CapeData, "CapeData")),
 			self::safeB64Decode($clientData->SkinGeometryData, "SkinGeometryData"),
-			self::safeB64Decode($clientData->SkinGeometryDataEngineVersion, "SkinGeometryDataEngineVersion"), //yes, they actually base64'd the version!
+			self::safeB64Decode($clientData->SkinGeometryDataEngineVersion, "SkinGeometryDataEngineVersion"),
 			self::safeB64Decode($clientData->SkinAnimationData, "SkinAnimationData"),
 			$clientData->CapeId,
 			null,
 			$clientData->ArmSize,
 			$clientData->SkinColor,
-			array_map(function(ClientDataPersonaSkinPiece $piece) : PersonaSkinPiece{
-				return new PersonaSkinPiece($piece->PieceId, $piece->PieceType, $piece->PackId, $piece->IsDefault, $piece->ProductId);
-			}, $clientData->PersonaPieces),
-			array_map(function(ClientDataPersonaPieceTintColor $tint) : PersonaPieceTintColor{
-				return new PersonaPieceTintColor($tint->PieceType, $tint->Colors);
-			}, $clientData->PieceTintColors),
+			$personaPieces,
+			$pieceTintColors,
 			true,
 			$clientData->PremiumSkin,
 			$clientData->PersonaSkin,
 			$clientData->CapeOnClassicSkin,
-			true, //assume this is true? there's no field for it ...
+			true,
 		);
 	}
 }
