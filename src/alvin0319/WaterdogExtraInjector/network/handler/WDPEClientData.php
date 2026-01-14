@@ -4,11 +4,10 @@ declare(strict_types=1);
 
 namespace alvin0319\WaterdogExtraInjector\network\handler;
 
-
 final class WDPEClientData{
 
     /**
-     * @var \pocketmine\network\mcpe\protocol\types\login\ClientDataAnimationFrame[]
+     * @var \pocketmine\network\mcpe\protocol\types\login\clientdata\ClientDataAnimationFrame[]
      * @required
      */
     public array $AnimatedImageData;
@@ -52,14 +51,11 @@ final class WDPEClientData{
     /** @required */
     public int $DeviceOS;
 
-    /** @var bool */
-    public $ThirdPartyNameOnly;
-
-    /** @var string */
-    public $EditorWorldType;
-
     /** @required */
     public string $GameVersion;
+
+    /** @required */
+    public int $GraphicsMode;
 
     /** @required */
     public int $GuiScale;
@@ -79,7 +75,7 @@ final class WDPEClientData{
     public bool $OverrideSkin;
 
     /**
-     * @var \pocketmine\network\mcpe\protocol\types\login\ClientDataPersonaSkinPiece[]
+     * @var \pocketmine\network\mcpe\protocol\types\login\clientdata\ClientDataPersonaSkinPiece[]
      * @required
      */
     public array $PersonaPieces;
@@ -88,7 +84,7 @@ final class WDPEClientData{
     public bool $PersonaSkin;
 
     /**
-     * @var \pocketmine\network\mcpe\protocol\types\login\ClientDataPersonaPieceTintColor[]
+     * @var \pocketmine\network\mcpe\protocol\types\login\clientdata\ClientDataPersonaPieceTintColor[]
      * @required
      */
     public array $PieceTintColors;
@@ -103,9 +99,6 @@ final class WDPEClientData{
     public int $PlatformType;
 
     public string $PlatformUserId = ""; //xbox-only, apparently
-
-    /** @required */
-    public string $PlayFabId;
 
     /** @required */
     public bool $PremiumSkin = false;
@@ -157,8 +150,4 @@ final class WDPEClientData{
 
 	/** @required */
 	public string $Waterdog_IP;
-
-    public static $GraphicsMode;
-
-    public static $Waterdog_Auth;
 }
